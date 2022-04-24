@@ -503,6 +503,8 @@ describe('express-list-endpoints', () => {
 
       const exampleMiddleware = () => {}
 
+      router.use(exampleMiddleware)
+
       router
         .post('/test', [
           exampleMiddleware,
@@ -527,11 +529,13 @@ describe('express-list-endpoints', () => {
 
     it('should retrieve the correct middlewares', () => {
       expect(endpoints).to.have.length(2)
-      expect(endpoints[0].middlewares).to.have.length(2)
+      expect(endpoints[0].middlewares).to.have.length(3)
       expect(endpoints[0].middlewares[0]).to.equal('exampleMiddleware')
-      expect(endpoints[0].middlewares[1]).to.equal('anonymous')
-      expect(endpoints[1].middlewares).to.have.length(1)
-      expect(endpoints[1].middlewares[0]).to.equal('anonymous')
+      expect(endpoints[0].middlewares[1]).to.equal('exampleMiddleware')
+      expect(endpoints[0].middlewares[2]).to.equal('anonymous')
+      expect(endpoints[1].middlewares).to.have.length(2)
+      expect(endpoints[0].middlewares[0]).to.equal('exampleMiddleware')
+      expect(endpoints[1].middlewares[1]).to.equal('anonymous')
     })
   })
 

@@ -8,6 +8,10 @@ const STACK_ITEM_VALID_NAMES = [
   'bound dispatch',
   'mounted_app'
 ]
+const STACK_ITEM_IGNORED_NAMES = [
+  'query',
+  'expressInit'
+]
 
 /**
  * Returns all the verbs detected for the passed route
@@ -27,10 +31,10 @@ const getRouteMethods = function (route) {
  * @param {Object} route
  * @returns {string[]}
  */
-const getRouteMiddlewares = function (route) {
-  return route.stack.map((item) => {
+const getRouteMiddlewares = function (middlewares, route) {
+  return middlewares.concat(route.stack.map((item) => {
     return item.handle.name || 'anonymous'
-  })
+  }))
 }
 
 /**
@@ -47,7 +51,7 @@ const hasParams = function (expressPathRegExp) {
  * @param {string} basePath The basePath the route is on
  * @return {Object[]} Endpoints info
  */
-const parseExpressRoute = function (route, basePath) {
+const parseExpressRoute = function (route, basePath, middlewares = []) {
   const paths = []
 
   if (Array.isArray(route.path)) {
@@ -66,7 +70,7 @@ const parseExpressRoute = function (route, basePath) {
       endpoints.push({
         method,
         path: completePath,
-        middlewares: getRouteMiddlewares(route)
+        middlewares: getRouteMiddlewares(middlewares, route)
       })
     })
   })
@@ -160,9 +164,10 @@ const addEndpoints = function (currentEndpoints, endpointsToAdd) {
  * @returns {Object[]}
  */
 const parseStack = function (stack, basePath, endpoints) {
+  const middlewares = []
   stack.forEach((stackItem) => {
     if (stackItem.route) {
-      const newEndpoints = parseExpressRoute(stackItem.route, basePath)
+      const newEndpoints = parseExpressRoute(stackItem.route, basePath, middlewares)
 
       endpoints = addEndpoints(endpoints, newEndpoints)
     } else if (STACK_ITEM_VALID_NAMES.includes(stackItem.name)) {
@@ -171,7 +176,7 @@ const parseStack = function (stack, basePath, endpoints) {
       let newBasePath = basePath
 
       if (isExpressPathRegexp) {
-        const parsedPath = parseExpressPath(stackItem.regexp, stackItem.keys)
+        const parsedPath = parseExpressPath(stackItem.regexp, stackItem.keys, middlewares)
 
         newBasePath += `/${parsedPath}`
       } else if (!stackItem.path && stackItem.regexp && stackItem.regexp.toString() !== EXPRESS_ROOT_PATH_REGEXP_VALUE) {
@@ -181,6 +186,8 @@ const parseStack = function (stack, basePath, endpoints) {
       }
 
       endpoints = parseEndpoints(stackItem.handle, newBasePath, endpoints)
+    } else if (!STACK_ITEM_IGNORED_NAMES.includes(stackItem.name)) {
+      middlewares.push(stackItem.handle.name || 'anonymous')
     }
   })
 
